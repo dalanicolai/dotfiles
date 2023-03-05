@@ -1,166 +1,282 @@
-;; -*- org-confirm-babel-evaluate: nil; eval: (add-hook 'after-save-hook #'org-babel-tangle) -*-
+# -*- org-confirm-babel-evaluate: nil; eval: (add-hook 'after-save-hook #'org-babel-tangle nil t) -*-
 
-This file shows how to, step by step, configure Emacs to obtain a
-Spacemacs-(evil)-like experience, starting from scratch in vanilla Emacs. To
-quickly ease the work, let's start with installing the evil package:
+#+STARTUP: overview
 
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
+* Usage info
+Exclude entries from tangling by commenting them out using =org-toggle-comment=
+(=C-c ;=).
+
+Use =S-TAB= to fold all headings (optionally with numeric prefix see
+[[help:org-cycle-content][org-cycle-content]]).
+
+Personally, I keep this file in my =~/git/dotfiles= directory, and create a
+symlink from my =.emacs.d= dir to the init.el file in that dotfile dir.
+
+** Package management
+To prevent Emacs from printing that packages have been installed already, we
+define a simple helper function. And instead of using =package-install= we use =use=
+in this file.
+
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (defun use (package)
+    (unless (package-installed-p package)
+      (package-install package)))
+#+end_src
+
+* General
+** Add Melpa archive
+Some packages are only available from Melpa
+
+#+begin_src emacs-lisp :tangle init.el :results silent
   (require 'package)
-  ;; the following two lines are only required in Emacs versions below 28 
-  (add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/") t)
   (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
-  (package-initialize)
-  (unless (package-installed-p 'use-package)
-    (package-install 'use-package))
-  (eval-when-compile
-    (require 'use-package))
+  ;; (package-initialize)
+#+end_src
 
-  (use-package quelpa
-    :ensure t)
-  
-  (use-package undo-tree
-    :ensure t)
+** Custom file
+Because we overwrite the init.el on each tangle, we should define a separate [[info:emacs#Saving
+Customizations][custom file]].
 
-  (use-package evil
-    :ensure t
-    :init
-    (setq evil-want-integration t) ;; This is optional since it's already set to t by default.
-    (setq evil-want-keybinding nil)
-    :config
-    (evil-mode 1)
-    (add-to-list 'evil-motion-state-modes 'special-mode)
-        (evil-global-set-key 'normal "J" 'nil)
-  (evil-global-set-key 'motion "J" 'evil-scroll-page-down)
-  (evil-global-set-key 'motion "K" 'evil-scroll-page-up)
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (setq custom-file "~/git/dotfiles/custom.el")
+  (load custom-file)
+#+end_src
 
-  (evil-global-set-key 'motion (kbd "<tab>") 'indent-for-tab-command)
-  (evil-global-set-key 'motion "C-M-j" 'next-buffer)
-  (evil-global-set-key 'motion "C-M-k" 'previous-buffer))
+** Lexical binding
+In Emacs we should add the following initial comment to each file by default,
+see [[info:elisp#Lexical Binding][Lexical Binding]].
 
-  ;; (use-package evil-collection
-  ;;   :after evil
-  ;;   :ensure t
-  ;;   :config
-  ;;   (evil-collection-init))
+#+begin_src emacs-lisp :tangle init.el :results silent
+  ;;; -*- lexical-binding: t; -*-
+#+end_src
 
+** Hide gui-elements
+#+begin_src emacs-lisp :tangle init.el :results silent
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+#+end_src
+
+** Cursor config
+#+begin_src emacs-lisp :tangle init.el :results silent
+(blink-cursor-mode -1)
+#+end_src
+
+** Show tabs
+#+begin_src emacs-lisp :tangle init.el :results silent
+(global-tab-line-mode)
+#+end_src
+** Fix scrolling
+#+begin_src emacs-lisp :tangle init.el :results silent
   (setq scroll-conservatively 1)
-#+END_SRC
+#+end_src
+** ESC quit
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+#+end_src
 
-After pressing ~C-c C-c~ inside the above code block, evil keybindings should take
-effect. (A code block should get evaluated by pressing ~C-c C-c~ to take effect.
-Although we will not mention it anymore, this should be done for all code block
-in this tutorial.
-
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (recentf-mode)
+** Tab complete
+#+begin_src emacs-lisp :tangle init.el :results silent
   (setq tab-always-indent 'complete)
-#+END_SRC
+#+end_src
 
-  As we would like to insert org source blocks frequently, we will create (and
-  save) a keyboard macro for it (we could also use the yasnippet package, but we
-  will skip that until some later stage) To save a evil keyboard macro, we fisrt
-  create one by pressing ~q~ (in evil normal state) followed by another key that
-  assigns the macro to some register, then we create the source block, by typing
-  it out fully, end we finally exit recording the macro by pressing ~q~ again.
+** Describe select help window 
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (setq help-window-select t)
+#+end_src
+* Global config
+** Start emacs server
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (server-start)
+#+end_src
 
+** Find special files/buffers
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (defun find-init-file ()
+    (interactive)
+    (find-file "~/git/dotfiles/README.org"))
 
-  ,#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-    (fset 'org-elisp-source-block (kmacro-lambda-form [?i ?# ?+ ?B ?E ?G ?I ?N ?_ ?S
-       ?R ?C ? ?e ?m ?a ?c ?s ?- ?l ?i ?s ?p ? ?: ?t ?a ?n ?g ?l ?e ? ?i ?n ?i ?t ?.
-       ?e ?l ? ?: ?r ?e ?s ?u ?l ?t ?s ? ?s ?i ?l ?e ?n ?t return return ?# ?+ ?E ?N
-       ?D ?_ ?S ?R ?C escape ?k] 0 "%d"))
-#+END_SRC
+  (defun load-init-file ()
+    (interactive)
+    (load-file user-init-file))
 
-Subsequently we save the macro, by pressing =C-x C-k n= and giving it a name. Then
-we can save it for later sessions also by inserting the macro definition into
-the buffer using =M-x insert-kbd-macro= (we will add it inside the source block
-typed just now. We can auto-format the long macro defintion by pressing ~M-q~
-while the cursor is positioned somewhere on the definition).
+  (defun pop-to-messages ()
+    (interactive)
+    (switch-to-buffer (get-buffer-create "*Messages*")))
 
-To make the spacebar the main 'control' key, we will make use of the
-emacs-bind-key package
+  (defun pop-to-scratch ()
+    (interactive)
+    (switch-to-buffer (get-scratch-buffer-create)))
+#+end_src
 
+** Auto insert mode
+In order to never forget inserting the lexical-binding variable in elisp files,
+we simply use =auto-insert-mode=
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (auto-insert-mode)
+#+end_src
+
+** Store command history
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (savehist-mode)
+#+end_src
+
+** Store file history
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (recentf-mode)
+#+end_src
+
+* Core packages
+** spacemacs-theme
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'spacemacs-theme)
+  (load-theme 'spacemacs-dark t)
+#+end_src
+
+** undo tree
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'undo-tree)
+  (global-undo-tree-mode)
+#+end_src
+
+** which-key
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'which-key)
+  (which-key-mode)
+;  (with-eval-after-load 'bind-map
+;    (define-key my-base-leader-map "b" '("buffer" . (keymap))))
+#+end_src
+
+** embark
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'embark)
+  (with-eval-after-load 'evil
+    (evil-define-key '(normal) 'global (kbd "M-.") 'embark-act))
+#+end_src
+
+** link-hint
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'link-hint)
+  (with-eval-after-load 'evil
+    (evil-define-key 'motion help-mode-map "o" 'link-hint-open-link))
+#+end_src
+
+** tree-sitter
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'tree-sitter)
+  (use 'tree-sitter-langs) 
+  (require 'tree-sitter)
+  (require 'tree-sitter-langs) 
+#+end_src
+
+* Modules
+** evil
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'evil)
+
+  (setq evil-want-integration t ;; This is optional since it's already set to t by default.
+	evil-want-keybinding nil
+	evil-want-C-i-jump t
+	evil-respect-visual-line-mode t
+	evil-undo-system 'undo-redo
+	evil-symbol-word-search t)
+
+  (evil-mode)
+
+  (add-to-list 'evil-motion-state-modes 'special-mode)
+  (evil-global-set-key 'normal "J" 'nil)
+  (evil-define-key '(motion) 'global "J" 'evil-scroll-page-down)
+  (evil-define-key '(motion) 'global "K" 'evil-scroll-page-up)
+
+  ;; (evil-global-set-key 'motion (kbd "<tab>") 'indent-for-tab-command)
+  (evil-define-key '(motion normal emacs) 'global (kbd "C-.") 'next-buffer)
+  (evil-define-key '(motion normal emacs) 'global (kbd "C-,") 'previous-buffer)
+
+  (evil-define-key '(normal) 'global (kbd "C-j") 'evil-join)
+
+#+end_src
+
+*** Evil collection
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (use-package bind-map
-    :ensure t)
+  (use 'evil-collection)
+  (require 'evil-collection)
+#+END_SRC
+
+*** Evil commenter
+#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
+  (use 'evil-nerd-commenter)
+#+END_SRC
+
+*** Evil surround
+#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
+  (use 'evil-surround)
+  (global-evil-surround-mode)
+#+END_SRC
+
+#+END_SRC
+
+** bind-map (core keybindings)
+We use the bind-map package to easily create Spacemacs like keybindings.
+
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'bind-map)
 
   (bind-map my-base-leader-map
     :keys ("M-SPC")
     :evil-keys ("SPC")
     :evil-states (normal motion visual)
     :bindings
-    ("SPC" 'execute-extended-command
-     "TAB" 'previous-buffer
-     ";"   'evilnc-comment-or-uncomment-lines
+    ("SPC"   'execute-extended-command
+     "<tab>" 'evil-switch-to-windows-last-buffer
+     ";"     'evilnc-comment-or-uncomment-lines
 
-     "bd"  'kill-current-buffer
-     "bm"  'pop-to-messages
-     "bs"  'pop-to-scratch
-     "fed" 'find-dotfile
-     "ff"  'find-file
-     "fs"  'save-buffer
+     "b"     '("buffers" . (keymap))
+     "bb"    'switch-to-buffer
+     "bd"    'kill-current-buffer
+     "bm"    'pop-to-messages
+     "bs"    'pop-to-scratch
 
-     "hc"  'describe-char
-     "hf"  'describe-function
-     "hk"  'describe-key
-     "hv"  'describe-variable
-     "hK"  'describe-keymap
+     "f"     '("files" . (keymap))
+     "fed"   'find-init-file
+     "feR"   'load-init-file
+     "ff"    'find-file
+     "fr"    'recentf
+     "fs"    'save-buffer
 
-     "is" 'org-elisp-source-block
+     "g"     '("git" . (keymap))
 
-     "w/" 'split-window-right
-     "wd" 'delete-window
-     "ww" 'other-window
+     "h"     '("help" . (keymap))
+     "hc"    'describe-char
+     "hf"    'describe-function
+     "hk"    'describe-key
+     "hv"    'describe-variable
+     "hK"    'describe-keymap
 
-     "qq" 'save-buffers-kill-emacs
+     "j"     '("jump" . (keymap))
+     "jf"    'find-function
+     "ji"    'imenu ;might get overwritten by ivy/vertico/helm section
+     "jl"    'find-library
 
-     "fr"    'consult-recent-file
-     "C-c h" 'consult-history
-     "C-c m" 'consult-mode-command
-     "C-c k" 'consult-kmacro
-     ;; C-x bindings (ctl-x-map)
-     "C-x M-:" 'consult-complex-command     ;; orig. repeat-complex-command
-     "bb"      'consult-buffer                ;; orig. switch-to-buffer
-     "C-x 4 b" 'consult-buffer-other-window ;; orig. switch-to-buffer-other-window
-     "C-x 5 b" 'consult-buffer-other-frame  ;; orig. switch-to-buffer-other-frame
-     "C-x r b" 'consult-bookmark            ;; orig. bookmark-jump
-	    ; Custom M-# bindings for fast register access
-     "M-#"   'consult-register-load
-     "M-'"   'consult-register-store          ;; orig. abbrev-prefix-mark (unrelated)
-     "C-M-#" 'consult-register
-	    ; Other custom bindings
-     "ry" 'consult-yank-pop                ;; orig. yank-pop
-     "ha" 'consult-apropos            ;; orig. apropos-command
-	    ; M-g bindings (goto-map)
-     "M-g e"   'consult-compile-error
-     "M-g f"   'consult-flymake               ;; Alternative: consult-flycheck
-     "M-g g"   'consult-goto-line             ;; orig. goto-line
-     "M-g M-g" 'consult-goto-line           ;; orig. goto-line
-     "jo"      'consult-outline               ;; Alternative: consult-org-heading
-     "M-g m"   'consult-mark
-     "M-g k"   'consult-global-mark
-     "ji"      'consult-imenu
-     "M-g I"   'consult-imenu-multi
-	    ; M-s bindings (search-map)
-     "M-s d" 'consult-find
-     "fl"    'consult-locate
-     "M-s g" 'consult-grep
-     "M-s G" 'consult-git-grep
-     "sf"    'consult-ripgrep
-     "ss"    'consult-line
-     "M-s L" 'consult-line-multi
-     "M-s m" 'consult-multi-occur
-     "M-s k" 'consult-keep-lines
-     "M-s u" 'consult-focus-lines
-	    ; Isearch integration
-     "M-s e" 'consult-isearch-history
-     ;; :map isearch-mode-map
-     "M-e"   'consult-isearch-history         ;; orig. isearch-edit-string
-     "M-s e" 'consult-isearch-history       ;; orig. isearch-edit-string
-     "M-s l" 'consult-line                  ;; needed by consult-line to detect isearch
-     "M-s L" 'consult-line-multi           ;; needed by consult-line to detect isearch
-     ))
+     "s"     '("search" . (keymap))
+     "sl"    'locate
 
+     "t"     '("toggles" . (keymap))
+     "tl"    'display-line-numbers-mode
+
+     "u"     'universal-argument
+
+     "w"     '("windows" . (keymap))
+     "w/"    'split-window-right
+     "wd"    'delete-window
+     "ww"    'other-window
+
+     "q"     '("quit" . (keymap))
+     "qq"    'save-buffers-kill-emacs))
+#+end_src
+
+** emacs-lisp
+
+#+begin_src emacs-lisp :tangle init.el :results silent
   (bind-map my-elisp-map
     :keys ("M-SPC m" "M-,")
     :evil-keys ("SPC m" ",")
@@ -169,281 +285,103 @@ emacs-bind-key package
     :bindings
     ("eb" 'eval-buffer
      "ef" 'eval-defun))
-#+END_SRC
+#+end_src
 
+** org
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (global-set-key (kbd "C-M-j") 'consult-buffer)
-  (global-set-key (kbd "C-M-k") 'consult-buffer)
+  (with-eval-after-load 'org (evil-collection-org-setup))
+
+  (bind-map my-org-map
+    :keys ("M-SPC m" "M-,")
+    :evil-keys ("SPC m" ",")
+    :major-modes (org-mode)
+    :bindings
+    ("bd" 'org-demarcate-block))
 #+END_SRC
 
-We would like to have our keypress guide using the [[https://elpa.gnu.org/packages/which-key.html][which-key]]
-package
+*** org-superstar
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (use-package which-key
-    :ensure t)
-    ;; :config (which-key-mode))
+  (use 'org-superstar)
+  (add-hook 'org-mode-hook (lambda () (org-superstar-mode 1)))
 #+END_SRC
 
-;Autocompletion is handy too
-;#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-;  (use-package company
-;    :ensure t
-;    :init
-;    (add-hook 'after-init-hook 'global-company-mode))
-;#+END_SRC
+** Completion (ivy/vertico/helm etc.)
+*** Company
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'company)
+  (add-hook 'after-init-hook 'global-company-mode)
+#+end_src
 
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
+*** COMMENT corfu
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'corfu)
+  (global-corfu-mode)
+#+end_src
 
-	(use-package evil-nerd-commenter
-	  :ensure t)
+*** ivy
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'ivy)
+  (use 'counsel)
+  (use 'ivy-rich)
+  (ivy-mode)
+  (counsel-mode)
+  (ivy-rich-mode)
 
-	(use-package evil-surround
-	  :ensure t
-  :config (global-evil-surround-mode))
 
-#+END_SRC
+  ;; taken directly from Spacemacs
+  (dolist (map (list ivy-minibuffer-map
+		     ivy-switch-buffer-map
+		     ivy-reverse-i-search-map))
+    (define-key map (kbd "C-j") 'ivy-next-line)
+    (define-key map (kbd "C-k") 'ivy-previous-line))
+  (define-key ivy-minibuffer-map (kbd "M-.") 'embark-act)
+  (define-key ivy-minibuffer-map (kbd "C-h") (kbd "DEL"))
+  ;; Move C-h to C-S-h
+  (define-key ivy-minibuffer-map (kbd "C-S-h") help-map)
+  (define-key ivy-minibuffer-map (kbd "C-l") 'ivy-alt-done)
+  (define-key ivy-minibuffer-map (kbd "<escape>")
+	      'minibuffer-keyboard-quit)
 
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  ;; Enable vertico
-  (use-package vertico
-    :ensure t
-    :init
-    (vertico-mode)
+  (bind-map-set-keys my-base-leader-map
+    "ss" 'swiper
+    "/"  'counsel-rg)
+#+end_src
 
-    ;; Different scroll margin
-    ;; (setq vertico-scroll-margin 0)
+** Language server
+*** eglot
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'eglot)
+#+end_src
 
-    ;; Show more candidates
-    ;; (setq vertico-count 20)
+** magit
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'magit)
+  (with-eval-after-load 'magit (evil-collection-magit-setup))
+  (with-eval-after-load 'magit-section (evil-collection-magit-section-setup))
 
-    ;; Grow and shrink the Vertico minibuffer
-    ;; (setq vertico-resize t)
+  (bind-map-set-keys my-base-leader-map
+    "gs" 'magit)
+#+end_src
 
-    ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
-    ;; (setq vertico-cycle t)
+** search
+*** rg
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'rg)
+  (bind-map-set-keys my-base-leader-map
+    "sr" 'rg)
+#+end_src
 
-    :config
-    (define-key vertico-map (kbd "C-j") 'vertico-next)
-    (define-key vertico-map (kbd "C-M-j") 'vertico-next)
-    (define-key vertico-map (kbd "C-k") 'vertico-previous)
-    (define-key vertico-map (kbd "C-M-k") 'vertico-previous)
-    (define-key vertico-map (kbd "C-M-l") 'vertico-exit)
-    )
+* User config
 
-  ;; Optionally use the `orderless' completion style. See
-  ;; `+orderless-dispatch' in the Consult wiki for an advanced Orderless style
-  ;; dispatcher. Additionally enable `partial-completion' for file path
-  ;; expansion. `partial-completion' is important for wildcard support.
-  ;; Multiple files can be opened at once with `find-file' if you enter a
-  ;; wildcard. You may also give the `initials' completion style a try.
-  (use-package orderless
-    :ensure t
-    :init
-    ;; Configure a custom style dispatcher (see the Consult wiki)
-    ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
-    ;;       orderless-component-separator #'orderless-escapable-split-on-space)
-    (setq completion-styles '(orderless)
-          completion-category-defaults nil
-          completion-category-overrides '((file (styles partial-completion)))))
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'org-journal)
+  (setq org-journal-file-type 'weekly)
+#+end_src
 
-  ;; Persist history over Emacs restarts. Vertico sorts by history position.
-  (use-package savehist
-    :ensure t
-    :init
-    (savehist-mode))
 
-  ;; A few more useful configurations...
-  (use-package emacs
-    :ensure t
-    :init
-    ;; Add prompt indicator to `completing-read-multiple'.
-    ;; Alternatively try `consult-completing-read-multiple'.
-    (defun crm-indicator (args)
-      (cons (concat "[CRM] " (car args)) (cdr args)))
-    (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (load-file "/home/dalanicolai/git/doc-tools/doc-scroll-pymupdf.el")
+#+end_src
 
-    ;; Do not allow the cursor in the minibuffer prompt
-    (setq minibuffer-prompt-properties
-          '(read-only t cursor-intangible t face minibuffer-prompt))
-    (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
 
-    ;; Emacs 28: Hide commands in M-x which do not work in the current mode.
-    ;; Vertico commands are hidden in normal buffers.
-    ;; (setq read-extended-command-predicate
-    ;;       #'command-completion-default-include-p)
 
-    ;; Enable recursive minibuffers
-    (setq enable-recursive-minibuffers t))
-
-  ;; Example configuration for Consult
-  (use-package consult
-    :ensure t
-    ;; Replace bindings. Lazily loaded due by `use-package'.
-    :bind (;; C-c bindings (mode-specific-map)
-           ("C-c h" . consult-history)
-           ("C-c m" . consult-mode-command)
-           ("C-c k" . consult-kmacro)
-           ;; C-x bindings (ctl-x-map)
-           ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
-           ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
-           ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
-           ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
-           ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
-           ;; Custom M-# bindings for fast register access
-           ("M-#" . consult-register-load)
-           ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
-           ("C-M-#" . consult-register)
-           ;; Other custom bindings
-           ("M-y" . consult-yank-pop)                ;; orig. yank-pop
-           ("<help> a" . consult-apropos)            ;; orig. apropos-command
-           ;; M-g bindings (goto-map)
-           ("M-g e" . consult-compile-error)
-           ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
-           ("M-g g" . consult-goto-line)             ;; orig. goto-line
-           ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
-           ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
-           ("M-g m" . consult-mark)
-           ("M-g k" . consult-global-mark)
-           ("M-g i" . consult-imenu)
-           ("M-g I" . consult-imenu-multi)
-           ;; M-s bindings (search-map)
-           ("M-s d" . consult-find)
-           ("M-s D" . consult-locate)
-           ("M-s g" . consult-grep)
-           ("M-s G" . consult-git-grep)
-           ("M-s r" . consult-ripgrep)
-           ("M-s l" . consult-line)
-           ("M-s L" . consult-line-multi)
-           ("M-s m" . consult-multi-occur)
-           ("M-s k" . consult-keep-lines)
-           ("M-s u" . consult-focus-lines)
-           ;; Isearch integration
-           ("M-s e" . consult-isearch-history)
-           :map isearch-mode-map
-           ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
-           ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
-           ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
-           ("M-s L" . consult-line-multi))           ;; needed by consult-line to detect isearch
-
-    ;; Enable automatic preview at point in the *Completions* buffer. This is
-    ;; relevant when you use the default completion UI. You may want to also
-    ;; enable `consult-preview-at-point-mode` in Embark Collect buffers.
-    :hook (completion-list-mode . consult-preview-at-point-mode)
-
-    ;; The :init configuration is always executed (Not lazy)
-    :init
-
-    ;; Optionally configure the register formatting. This improves the register
-    ;; preview for `consult-register', `consult-register-load',
-    ;; `consult-register-store' and the Emacs built-ins.
-    (setq register-preview-delay 0
-          register-preview-function #'consult-register-format)
-
-    ;; Optionally tweak the register preview window.
-    ;; This adds thin lines, sorting and hides the mode line of the window.
-    (advice-add #'register-preview :override #'consult-register-window)
-
-    ;; Optionally replace `completing-read-multiple' with an enhanced version.
-    (advice-add #'completing-read-multiple :override #'consult-completing-read-multiple)
-
-    ;; Use Consult to select xref locations with preview
-    (setq xref-show-xrefs-function #'consult-xref
-          xref-show-definitions-function #'consult-xref)
-
-    ;; Configure other variables and modes in the :config section,
-    ;; after lazily loading the package.
-    :config
-
-    ;; Optionally configure preview. The default value
-    ;; is 'any, such that any key triggers the preview.
-    ;; (setq consult-preview-key 'any)
-    ;; (setq consult-preview-key (kbd "M-."))
-    ;; (setq consult-preview-key (list (kbd "<S-down>") (kbd "<S-up>")))
-    ;; For some commands and buffer sources it is useful to configure the
-    ;; :preview-key on a per-command basis using the `consult-customize' macro.
-    (consult-customize
-     consult-theme
-     :preview-key '(:debounce 0.2 any)
-     consult-ripgrep consult-git-grep consult-grep
-     consult-bookmark consult-recent-file consult-xref
-     consult--source-recent-file consult--source-project-recent-file consult--source-bookmark
-     :preview-key (kbd "M-."))
-
-    ;; Optionally configure the narrowing key.
-    ;; Both < and C-+ work reasonably well.
-    (setq consult-narrow-key "<") ;; (kbd "C-+")
-
-    ;; Optionally make narrowing help available in the minibuffer.
-    ;; You may want to use `embark-prefix-help-command' or which-key instead.
-    ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
-
-    ;; Optionally configure a function which returns the project root directory.
-    ;; There are multiple reasonable alternatives to chose from.
-      ;;;; 1. project.el (project-roots)
-    (setq consult-project-root-function
-          (lambda ()
-            (when-let (project (project-current))
-              (car (project-roots project)))))
-      ;;;; 2. projectile.el (projectile-project-root)
-    ;; (autoload 'projectile-project-root "projectile")
-    ;; (setq consult-project-root-function #'projectile-project-root)
-      ;;;; 3. vc.el (vc-root-dir)
-    ;; (setq consult-project-root-function #'vc-root-dir)
-      ;;;; 4. locate-dominating-file
-    ;; (setq consult-project-root-function (lambda () (locate-dominating-file "." ".git")))
-    )
-
-  (use-package marginalia
-    ;; Either bind `marginalia-cycle` globally or only in the minibuffer
-    :ensure t
-    :bind (("M-A" . marginalia-cycle)
-           :map minibuffer-local-map
-           ("M-A" . marginalia-cycle))
-
-    ;; The :init configuration is always executed (Not lazy!)
-    :init
-
-    ;; Must be in the :init section of use-package such that the mode gets
-    ;; enabled right away. Note that this forces loading the package.
-    (marginalia-mode))
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  ;; (load-file "~/git/gitter.el/gitter.el")
-
-  (use-package shr-tag-pre-highlight
-    :ensure t
-    :after shr
-    :config
-    (add-to-list 'shr-external-rendering-functions
-                 '(pre . shr-tag-pre-highlight)))
-  
-  (use-package avy
-    :ensure t)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (defun pop-to-messages ()
-    (interactive)
-    (switch-to-buffer (get-buffer-create "*Messages*")))
-
-  (defun pop-to-scratch ()
-    (interactive)
-    (switch-to-buffer (get-buffer-create "*scratch*")))
-
-  ;; (require 'format-all)
-  ;; (require 'language-id)
-  ;; (add-hook `before-save-hook 'format-all-buffer)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (load "~/git/image-roll.el/image-roll.el")
-  (quelpa '(pdf-tools :fetcher github
-                      :repo "dalanicolai/pdf-tools"
-                      :branch "pdf-roll"
-                      :files ("lisp/*.el"
-                              "README"
-                              ("build" "Makefile")
-                              ("build" "server")
-                              (:exclude "lisp/tablist.el" "lisp/tablist-filter.el"))))
-#+END_SRC
