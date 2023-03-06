@@ -128,50 +128,24 @@ we simply use =auto-insert-mode=
   (recentf-mode)
 #+end_src
 
+** Cursor format (color/shape)
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (setq evil-normal-state-cursor "DarkGoldenrod2"
+	evil-insert-state-cursor '("chartreuse3" bar)
+	evil-emacs-state-cursor '("SkyBlue2" box)
+	evil-visual-state-cursor '("gray" (hbar . 2))
+	evil-motion-state-cursor '("plum3" box))
+  ;;                                  ("hybrid" "SkyBlue2" (bar . 2))
+  ;;                                  ("replace" "chocolate" (hbar . 2))
+  ;;                                  ("evilified" "LightGoldenrod3" box)
+  ;;                                  ("lisp" "HotPink1" box)
+  ;;                                  ("iedit" "firebrick1" box)
+  ;;                                  ("iedit-insert" "firebrick1" (bar . 2)))
+  ;;   "Colors assigned to evil states with cursor definitions.
+  ;; To add your own, use `spacemacs/add-evil-curosr'.")
+#+end_src
+
 * Core packages
-** spacemacs-theme
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'spacemacs-theme)
-  (load-theme 'spacemacs-dark t)
-#+end_src
-
-** undo tree
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'undo-tree)
-  (global-undo-tree-mode)
-#+end_src
-
-** which-key
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'which-key)
-  (which-key-mode)
-;  (with-eval-after-load 'bind-map
-;    (define-key my-base-leader-map "b" '("buffer" . (keymap))))
-#+end_src
-
-** embark
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'embark)
-  (with-eval-after-load 'evil
-    (evil-define-key '(normal) 'global (kbd "M-.") 'embark-act))
-#+end_src
-
-** link-hint
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'link-hint)
-  (with-eval-after-load 'evil
-    (evil-define-key 'motion help-mode-map "o" 'link-hint-open-link))
-#+end_src
-
-** tree-sitter
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'tree-sitter)
-  (use 'tree-sitter-langs) 
-  (require 'tree-sitter)
-  (require 'tree-sitter-langs) 
-#+end_src
-
-* Modules
 ** evil
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'evil)
