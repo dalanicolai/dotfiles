@@ -68,7 +68,7 @@ see [[info:elisp#Lexical Binding][Lexical Binding]].
 #+end_src
 ** Fix scrolling
 #+begin_src emacs-lisp :tangle init.el :results silent
-  (setq scroll-conservatively 1)
+  (setq scroll-conservatively 101)
 #+end_src
 ** ESC quit
 #+begin_src emacs-lisp :tangle init.el :results silent
