@@ -94,7 +94,9 @@ see [[info:elisp#Lexical Binding][Lexical Binding]].
 #+begin_src emacs-lisp :tangle init.el :results silent
   (defun find-init-file ()
     (interactive)
-    (find-file "~/git/dotfiles/README.org"))
+    (let* ((true-init (file-truename user-init-file))
+	   (init-true-dir (file-name-directory true-init)))
+    (find-file (concat init-true-dir "README.org"))))
 
   (defun load-init-file ()
     (interactive)
