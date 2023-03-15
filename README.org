@@ -80,9 +80,17 @@ see [[info:elisp#Lexical Binding][Lexical Binding]].
   (setq tab-always-indent 'complete)
 #+end_src
 
-** Describe select help window 
+** Describe select help window
 #+begin_src emacs-lisp :tangle init.el :results silent
   (setq help-window-select t)
+#+end_src
+** Elisp development
+*** Set package archive directory
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (add-to-list 'package-archives '("personal" . "/home/dalanicolai/emacs/pkg-archive"))
+
+  (with-eval-after-load
+      (setq package-archive-upload-base "/home/dalanicolai/emacs/pkg-archive"))
 #+end_src
 * Global config
 ** Start emacs server
@@ -99,7 +107,7 @@ see [[info:elisp#Lexical Binding][Lexical Binding]].
   (defun find-init-file ()
     (interactive)
     (let* ((true-init (file-truename user-init-file))
-	   (init-true-dir (file-name-directory true-init)))
+     (init-true-dir (file-name-directory true-init)))
     (find-file (concat init-true-dir "README.org"))))
 
   (defun load-init-file ()
@@ -135,10 +143,10 @@ we simply use =auto-insert-mode=
 ** Cursor format (color/shape)
 #+begin_src emacs-lisp :tangle init.el :results silent
   (setq evil-normal-state-cursor "DarkGoldenrod2"
-	evil-insert-state-cursor '("chartreuse3" bar)
-	evil-emacs-state-cursor '("SkyBlue2" box)
-	evil-visual-state-cursor '("gray" (hbar . 2))
-	evil-motion-state-cursor '("plum3" box))
+  evil-insert-state-cursor '("chartreuse3" bar)
+  evil-emacs-state-cursor '("SkyBlue2" box)
+  evil-visual-state-cursor '("gray" (hbar . 2))
+  evil-motion-state-cursor '("plum3" box))
   ;;                                  ("hybrid" "SkyBlue2" (bar . 2))
   ;;                                  ("replace" "chocolate" (hbar . 2))
   ;;                                  ("evilified" "LightGoldenrod3" box)
@@ -151,6 +159,7 @@ we simply use =auto-insert-mode=
 
 * Core packages
 ** evil
+*** Init
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'evil)
 
@@ -164,90 +173,147 @@ we simply use =auto-insert-mode=
   (evil-mode)
 
   (add-to-list 'evil-motion-state-modes 'special-mode)
-  (evil-global-set-key 'normal "J" 'nil)
-  (evil-define-key '(motion) 'global "J" 'evil-scroll-page-down)
-  (evil-define-key '(motion) 'global "K" 'evil-scroll-page-up)
+#+end_src
+
+*** Evil leader
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (defvar my-leader-map (make-sparse-keymap))
+  (defvar-local my-local-leader-map nil)
+  (defun local-leader-map-init ()
+    (setq my-local-leader-map (make-sparse-keymap)))
+
+  (dolist (s (list evil-normal-state-map
+		   evil-motion-state-map))
+    (keymap-set s "SPC" (cons "root" my-leader-map)))
+
+  (dolist (s (list evil-insert-state-map
+		   evil-emacs-state-map))
+    (keymap-set s "M-SPC" (cons "root" my-leader-map)))
+#+end_src
+
+**** Helper functions
+#+begin_src emacs-lisp :tangle init.el :results silent
+  ;; (defun keymap-set-key-recursively (map keyseq cmd)
+  ;;   (unless (memq nil (mapcar (lambda (ch)
+  ;;                             (and (numberp ch)
+  ;;                                  (<= 0 ch 127)))
+  ;;                           (key-parse keyseq)))
+  ;;     (setq keyseq (kbd keyseq)))
+  ;;   (cond ((= (length keyseq) 1)
+  ;;          (keymap-set map (if (string= keyseq " ") "SPC" keyseq) cmd))
+  ;;         (t (let* ((key (substring keyseq 0 1))
+  ;;                   (child-map (keymap-lookup map key)))
+  ;;              (unless child-map
+  ;;                (setq child-map (make-sparse-keymap))
+  ;;                (keymap-set map key child-map))
+  ;;              (keymap-set-key-recursively child-map (substring keyseq 1) cmd)))))
+
+  (defun keymap-set-multi (map &rest bindings)
+    (while bindings
+      (pcase-let ((`(,key ,cmd) bindings))
+        ;; (keymap-set-key-recursively map key cmd))
+        (define-key map key cmd))
+      (setq bindings (cddr bindings))))
+#+end_src
+
+**** Core leader keybindings
+#+begin_src emacs-lisp :tangle init.el :results silent
+
+  ;; alternatively prefix keymap can be created using
+  ;; `which-key-add-keymap-based-replacements'
+  ;; (which-key-add-keymap-based-replacements my-leader-map "b" "buffers")
+
+
+  (keymap-set-multi my-leader-map
+		    (kbd "SPC")   'execute-extended-command
+		    (kbd "<tab>") 'evil-switch-to-windows-last-buffer
+		    ";"           'comment-or-uncomment-region
+
+		    "b"  '("buffer" . (keymap))
+		    "bb" 'switch-to-buffer
+		    "bd" 'kill-current-buffer
+		    "bm" 'pop-to-messages
+		    "bs" 'pop-to-scratch
+
+		    "e" '("edit" . (keymap))
+
+		    "f"   '("files" . (keymap))
+		    "fe"  '("emacs" . (keymap))
+		    "fed" 'find-init-file
+		    "feR" 'load-init-file
+		    "ff"  'find-file
+		    "fr"  'recentf
+		    "fs"  'save-buffer
+
+		    "g" '("git" . (keymap))
+
+		    "h"  '("help" . (keymap))
+		    "hc" 'describe-char
+		    "hf" 'describe-function
+		    "hj" 'info-display-manual
+		    "hk" 'describe-key
+		    "hv" 'describe-variable
+		    "hK" 'describe-keymap
+
+		    "j"  '("jump" . (keymap))
+		    "jf" 'find-function
+		    "ji" 'imenu ;might get overwritten by ivy/vertico/helm section 
+		    "jl" 'find-library
+
+		    "l" '("lisp" . (keymap))
+
+		    "o"  '("org" . (keymap))
+
+		    "s"  '("search" . (keymap))
+		    "sl" 'locate
+
+		    "t"  '("toggles" . (keymap))
+		    "tl" 'display-line-numbers-mode
+
+		    "u" 'universal-argument
+
+		    "w"  '("windows" . (keymap))
+		    "w/" 'split-window-right
+		    "wd" 'delete-window
+		    "wm" 'delete-other-windows
+		    "ww" 'other-window
+
+		    "q"  '("quit" . (keymap))
+		    "qq" 'save-buffers-kill-emacs)
+
+
+#+end_src
+
+*** Evil improved keybindings
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (evil-define-key 'normal 'global
+    (kbd "C-j") 'evil-join
+    "J" 'nil)
+
+  (evil-define-key 'motion 'global
+    "J" 'evil-scroll-page-down
+    "K" 'evil-scroll-page-up)
 
   ;; (evil-global-set-key 'motion (kbd "<tab>") 'indent-for-tab-command)
-  (evil-define-key '(motion normal emacs) 'global (kbd "C-.") 'next-buffer)
-  (evil-define-key '(motion normal emacs) 'global (kbd "C-,") 'previous-buffer)
+  (evil-define-key '(motion normal emacs) 'global
+    (kbd "C-.") 'next-buffer
+    (kbd "C-,") 'previous-buffer)
 
-  (evil-define-key '(normal) 'global (kbd "C-j") 'evil-join)
+  (defun evil-indent-hook-fun ()
+    (evil-define-key 'normal (kbd "<tab>") 'indent-for-tab-command))
+
+  (add-hook 'prog-mode-hook #'evil-indent-hook-fun)
+  #+end_src
+
 
 #+end_src
-
-** bind-map (core keybindings)
-We use the bind-map package to easily create Spacemacs like keybindings.
-
-#+begin_src emacs-lisp :tangle init.el :results silent
-  (use 'bind-map)
-
-  (bind-map my-base-leader-map
-    :keys ("M-SPC")
-    :evil-keys ("SPC")
-    :evil-states (normal motion visual)
-    :bindings
-    ("SPC"   'execute-extended-command
-     "<tab>" 'evil-switch-to-windows-last-buffer
-     ";"     'evilnc-comment-or-uncomment-lines
-
-     "b"     '("buffers" . (keymap))
-     "bb"    'switch-to-buffer
-     "bd"    'kill-current-buffer
-     "bm"    'pop-to-messages
-     "bs"    'pop-to-scratch
-
-     "e"     '("edit" . (keymap))
-
-     "f"     '("files" . (keymap))
-     "fed"   'find-init-file
-     "feR"   'load-init-file
-     "ff"    'find-file
-     "fr"    'recentf
-     "fs"    'save-buffer
-
-     "g"     '("git" . (keymap))
-
-     "h"     '("help" . (keymap))
-     "hc"    'describe-char
-     "hf"    'describe-function
-     "hj"    'info-display-manual
-     "hk"    'describe-key
-     "hv"    'describe-variable
-     "hK"    'describe-keymap
-
-     "j"     '("jump" . (keymap))
-     "jf"    'find-function
-     "ji"    'imenu ;might get overwritten by ivy/vertico/helm section
-     "jl"    'find-library
-
-     "l"     '("lisp" . (keymap))
-
-     "s"     '("search" . (keymap))
-     "sl"    'locate
-
-     "t"     '("toggles" . (keymap))
-     "tl"    'display-line-numbers-mode
-
-     "u"     'universal-argument
-
-     "w"     '("windows" . (keymap))
-     "w/"    'split-window-right
-     "wd"    'delete-window
-     "wm"    'delete-other-windows
-     "ww"    'other-window
-
-     "q"     '("quit" . (keymap))
-     "qq"    'save-buffers-kill-emacs))
-#+end_src
-
 ** spacemacs-theme
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'spacemacs-theme)
   (load-theme 'spacemacs-dark t)
 #+end_src
 
-** undo tree
+** COMMENT undo tree
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'undo-tree)
   (global-undo-tree-mode)
@@ -274,9 +340,18 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 ** tree-sitter
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'tree-sitter)
-  (use 'tree-sitter-langs) 
+  (use 'tree-sitter-langs)
   (require 'tree-sitter)
-  (require 'tree-sitter-langs) 
+  (require 'tree-sitter-langs)
+#+end_src
+
+** outline-mode
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (evil-define-key 'normal 'global
+    "zA" 'outline-cycle-buffer
+    "zC" 'outline-hide-sublevels
+    "zO" 'outline-show-all)
+  (add-hook 'prog-mode-hook #'outline-minor-mode)
 #+end_src
 
 ** kill-file-path
@@ -284,22 +359,22 @@ We use the bind-map package to easily create Spacemacs like keybindings.
   (use 'kill-file-path)
   (require 'kill-file-path)
 
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "fyy" 'kill-file-path
     "fyn" 'kill-file-path-basename
     "fyd" 'kill-file-path-dirname
     "fyw" 'kill-file-path-basename-without-extension)
 #+end_src
 
-* Modules
 ** evil
 *** Evil collection
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
   (use 'evil-collection)
-  (require 'evil-collection)
+  (evil-collection-init)
+  ;; (evil-collection-help-setup)
 #+END_SRC
 
-*** Evil commenter
+*** COMMENT Evil commenter
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
   (use 'evil-nerd-commenter)
 #+END_SRC
@@ -313,38 +388,48 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 #+END_SRC
 
 ** emacs-lisp
-
+*** major-mode keybdingins
 #+begin_src emacs-lisp :tangle init.el :results silent
-  (bind-map my-elisp-map
-    :keys ("M-SPC m" "M-,")
-    :evil-keys ("SPC m" ",")
-    :major-modes (emacs-lisp-mode
-      lisp-interaction-mode)
-    :bindings
-    ("eb" 'eval-buffer
-     "ef" 'eval-defun
-     "w" 'sp-wrap-round
-     "u" 'sp-unwrap-sexp))
+  (defun evil-emacs-lisp-set-follow-key ()
+    (keymap-set (evil-get-auxiliary-keymap emacs-lisp-mode-map 'normal t) "," (local-leader-map-init))
+    (keymap-set-multi my-local-leader-map
+		      "eb" 'eval-buffer
+		      "ef" 'eval-defun
+		      "w" 'sp-wrap-round
+		      "u" 'sp-unwrap-sexp))
+
+  (add-hook 'emacs-lisp-mode-hook #'evil-emacs-lisp-set-follow-key)
 #+end_src
 
 *** smartparens
 #+begin_src emacs-lisp :tangle init.el :results silent
   (require 'smartparens)
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "lw" 'sp-wrap-round)
 #+end_src
 
-
+* Modules
 ** org
 #+BEGIN_SRC emacs-lisp :tangle init.el :results silent
-  (with-eval-after-load 'org (evil-collection-org-setup))
+  ;; (with-eval-after-load 'org (evil-collection-org-setup))
 
-  (bind-map my-org-map
-    :keys ("M-SPC m" "M-,")
-    :evil-keys ("SPC m" ",")
-    :major-modes (org-mode)
-    :bindings
-    ("bd" 'org-demarcate-block))
+  (keymap-set my-leader-map "o l" 'org-store-link)
+
+  (defun org-copy-link ()
+    (interactive)
+    (let ((begin (org-element-property :begin (org-element-context)))
+	    (end (org-element-property :end (org-element-context))))
+      (kill-ring-save begin end)))
+
+  (defun evil-org-set-follow-key ()
+    (keymap-set (evil-get-auxiliary-keymap org-mode-map 'normal t) "," (local-leader-map-init))
+    (keymap-set-multi my-local-leader-map
+		      "d" 'org-babel-demarcate-block
+		      "il" 'org-insert-link
+		      "l" 'org-copy-link))
+
+  (add-hook 'org-mode-hook #'evil-org-set-follow-key)
+
 #+END_SRC
 
 *** org-superstar
@@ -358,7 +443,7 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'company)
   (add-hook 'after-init-hook 'global-company-mode)
-  (evil-collection-company-setup)
+  ;; (evil-collection-company-setup)
 #+end_src
 
 *** COMMENT corfu
@@ -379,8 +464,8 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 
   ;; taken directly from Spacemacs
   (dolist (map (list ivy-minibuffer-map
-		     ivy-switch-buffer-map
-		     ivy-reverse-i-search-map))
+         ivy-switch-buffer-map
+         ivy-reverse-i-search-map))
     (keymap-set map "C-j" 'ivy-next-line)
     (keymap-set map "C-k" 'ivy-previous-line))
   (keymap-set ivy-minibuffer-map "M-." 'embark-act)
@@ -389,16 +474,21 @@ We use the bind-map package to easily create Spacemacs like keybindings.
   (keymap-set ivy-minibuffer-map "C-S-h" help-map)
   (keymap-set ivy-minibuffer-map "C-l" 'ivy-alt-done)
   (keymap-set ivy-minibuffer-map "<escape>"
-	      'minibuffer-keyboard-quit)
+        'minibuffer-keyboard-quit)
 
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "ss" 'swiper
     "/"  'counsel-rg)
 #+end_src
-
+*** Vertico
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'vertico)
   (use 'consult)
+
+  (vertico-mode)
+
+  (keymap-set-multi my-leader-map
+    "/"  'counsel-rg)
 #+end_src
 
 ** Language server
@@ -410,25 +500,27 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 ** magit
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'magit)
-  ;; (with-eval-after-load 'magit-section (evil-collection-magit-section-setup))
   (with-eval-after-load 'magit
-    (keymap-set magit-mode-map "SPC" my-base-leader-map))
-  ;;   (evil-collection-magit-setup))
+    (define-key magit-mode-map (kbd "SPC") nil t))
 
-  (bind-map-set-keys my-base-leader-map
-    "gs" 'magit)
+    ;; (with-eval-after-load 'magit-section (evil-collection-magit-section-setup))
+    ;; (with-eval-after-load 'magit
+    ;;   (keymap-set magit-mode-map "SPC" my-leader-map)
+    ;;   (evil-collection-magit-setup))
+
+    (keymap-set-multi my-leader-map
+      "gs" 'magit)
 #+end_src
 
 ** search
 *** rg
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'rg)
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "sr" 'rg)
 #+end_src
 
 * User config
-
 ** org-journal
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'org-journal)
@@ -437,8 +529,15 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 
 ** doc-scroll-pymupdf
 #+begin_src emacs-lisp :tangle init.el :results silent
-  (load-file "/home/dalanicolai/git/doc-tools/doc-scroll-pymupdf.el")
-  (evil-define-key 'motion doc-scroll-mode-map "j" #'doc-scroll-scroll-forward)
+  ;; (load-file "/home/dalanicolai/git/doc-tools/doc-scroll-pymupdf.el")
+  ;; (use 'doc-scroll-pymupdf)
+  ;; (use 'doc-pymupdf-epc)
+  ;; (require 'doc-backend)
+  (load-file "/home/dalanicolai/git/doc-tools/doc-backend.el")
+  (evil-define-key 'motion doc-scroll-mode-map "j" #'doc-scroll-forward)
+  (evil-define-key 'motion doc-scroll-mode-map "k" #'doc-scroll-backward)
+  (evil-define-key 'motion doc-scroll-mode-map "J" #'doc-scroll-next-page)
+  (evil-define-key 'motion doc-scroll-mode-map "K" #'doc-scroll-previous-page)
 #+end_src
 
 ** COMMENT doc-tools
@@ -449,11 +548,11 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 #+begin_src emacs-lisp :tangle init.el :results silent
   (load-file "/home/dalanicolai/git/emacs-ladebug/ladebug.el")
 
-  (bind-map-set-keys my-elisp-map
-    "dw" 'ldbg-ldbg-wrap
-    "du" 'ldbg-ldbg-unwrap)
+  ;; (bind-map-set-keys my-elisp-map
+  ;;   "dw" 'ldbg-ldbg-wrap
+  ;;   "du" 'ldbg-ldbg-unwrap)
 
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "bw" 'ldbg-switch-to-warning-buffer)
 #+end_src
 
@@ -462,7 +561,7 @@ We use the bind-map package to easily create Spacemacs like keybindings.
   (use 'evil-iedit-state)
   (require 'evil-iedit-state)
 
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "ee" 'evil-iedit-state/iedit-mode)
 #+end_src
 
@@ -470,7 +569,7 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'vterm)
 
-  (bind-map-set-keys my-base-leader-map
+  (keymap-set-multi my-leader-map
     "'" 'vterm)
   (evil-global-set-key 'insert (kbd "C-d") nil)
 #+end_src
@@ -489,7 +588,7 @@ We use the bind-map package to easily create Spacemacs like keybindings.
   (use 'mastodon)
 
   (setq mastodon-instance-url "https://emacs.ch"
-	mastodon-active-user "dalanicolai")
+  mastodon-active-user "dalanicolai")
 #+end_src
 
 ** all the icons
@@ -501,4 +600,20 @@ We use the bind-map package to easily create Spacemacs like keybindings.
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'org-wc)
 #+end_src
+** imenu-list
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'imenu-list)
+#+end_src
 
+** hl-todo
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'hl-todo)
+  (global-hl-todo-mode)
+#+end_src
+
+** Info
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (evil-define-key 'motion Info-mode-map
+    "n" 'Info-search-next
+    "p" 'Info-search-backward)
+#+end_src
