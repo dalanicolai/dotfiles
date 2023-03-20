@@ -20,7 +20,8 @@ in this file.
 #+begin_src emacs-lisp :tangle init.el :results silent
   (defun use (package)
     (unless (package-installed-p package)
-      (package-install package)))
+      (package-install package))
+    (package-activate package))
 #+end_src
 
 * General
@@ -225,61 +226,64 @@ we simply use =auto-insert-mode=
 
 
   (keymap-set-multi my-leader-map
-		    (kbd "SPC")   'execute-extended-command
-		    (kbd "<tab>") 'evil-switch-to-windows-last-buffer
-		    ";"           'comment-or-uncomment-region
+        (kbd "SPC")   'execute-extended-command
+        (kbd "<tab>") 'evil-switch-to-windows-last-buffer
+        ";"           'comment-or-uncomment-region
 
-		    "b"  '("buffer" . (keymap))
-		    "bb" 'switch-to-buffer
-		    "bd" 'kill-current-buffer
-		    "bm" 'pop-to-messages
-		    "bs" 'pop-to-scratch
+        "b"  '("buffer" . (keymap))
+        "bb" 'switch-to-buffer
+        "bd" 'kill-current-buffer
+        "bm" 'pop-to-messages
+        "bs" 'pop-to-scratch
 
-		    "e" '("edit" . (keymap))
+        "c" '("compile" . (keymap))
+        "cc" 'recompile
 
-		    "f"   '("files" . (keymap))
-		    "fe"  '("emacs" . (keymap))
-		    "fed" 'find-init-file
-		    "feR" 'load-init-file
-		    "ff"  'find-file
-		    "fr"  'recentf
-		    "fs"  'save-buffer
+        "e" '("edit" . (keymap))
 
-		    "g" '("git" . (keymap))
+        "f"   '("files" . (keymap))
+        "fe"  '("emacs" . (keymap))
+        "fed" 'find-init-file
+        "feR" 'load-init-file
+        "ff"  'find-file
+        "fr"  'recentf
+        "fs"  'save-buffer
 
-		    "h"  '("help" . (keymap))
-		    "hc" 'describe-char
-		    "hf" 'describe-function
-		    "hj" 'info-display-manual
-		    "hk" 'describe-key
-		    "hv" 'describe-variable
-		    "hK" 'describe-keymap
+        "g" '("git" . (keymap))
 
-		    "j"  '("jump" . (keymap))
-		    "jf" 'find-function
-		    "ji" 'imenu ;might get overwritten by ivy/vertico/helm section 
-		    "jl" 'find-library
+        "h"  '("help" . (keymap))
+        "hc" 'describe-char
+        "hf" 'describe-function
+        "hj" 'info-display-manual
+        "hk" 'describe-key
+        "hv" 'describe-variable
+        "hK" 'describe-keymap
 
-		    "l" '("lisp" . (keymap))
+        "j"  '("jump" . (keymap))
+        "jf" 'find-function
+        "ji" 'imenu ;might get overwritten by ivy/vertico/helm section 
+        "jl" 'find-library
 
-		    "o"  '("org" . (keymap))
+        "l" '("lisp" . (keymap))
 
-		    "s"  '("search" . (keymap))
-		    "sl" 'locate
+        "o"  '("org" . (keymap))
 
-		    "t"  '("toggles" . (keymap))
-		    "tl" 'display-line-numbers-mode
+        "s"  '("search" . (keymap))
+        "sl" 'locate
 
-		    "u" 'universal-argument
+        "t"  '("toggles" . (keymap))
+        "tl" 'display-line-numbers-mode
 
-		    "w"  '("windows" . (keymap))
-		    "w/" 'split-window-right
-		    "wd" 'delete-window
-		    "wm" 'delete-other-windows
-		    "ww" 'other-window
+        "u" 'universal-argument
 
-		    "q"  '("quit" . (keymap))
-		    "qq" 'save-buffers-kill-emacs)
+        "w"  '("windows" . (keymap))
+        "w/" 'split-window-right
+        "wd" 'delete-window
+        "wm" 'delete-other-windows
+        "ww" 'other-window
+
+        "q"  '("quit" . (keymap))
+        "qq" 'save-buffers-kill-emacs)
 
 
 #+end_src
@@ -287,7 +291,8 @@ we simply use =auto-insert-mode=
 *** Evil improved keybindings
 #+begin_src emacs-lisp :tangle init.el :results silent
   (evil-define-key 'normal 'global
-    (kbd "C-j") 'evil-join
+    ;; (kbd "C-j") 'evil-join
+    (kbd "C-f") 'evil-join
     "J" 'nil)
 
   (evil-define-key 'motion 'global
@@ -299,10 +304,7 @@ we simply use =auto-insert-mode=
     (kbd "C-.") 'next-buffer
     (kbd "C-,") 'previous-buffer)
 
-  (defun evil-indent-hook-fun ()
-    (evil-define-key 'normal (kbd "<tab>") 'indent-for-tab-command))
-
-  (add-hook 'prog-mode-hook #'evil-indent-hook-fun)
+  (evil-define-key 'normal prog-mode-map (kbd "<tab>") 'indent-for-tab-command)
   #+end_src
 
 
@@ -334,10 +336,10 @@ we simply use =auto-insert-mode=
 ** link-hint
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'link-hint)
-  (evil-define-key 'motion help-mode-map "o" 'link-hint-open-link)
+  (evil-define-key 'normal special-mode-map "o" 'link-hint-open-link)
 #+end_src
 
-** tree-sitter
+** COMMENT tree-sitter
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'tree-sitter)
   (use 'tree-sitter-langs)
@@ -391,19 +393,28 @@ we simply use =auto-insert-mode=
 *** major-mode keybdingins
 #+begin_src emacs-lisp :tangle init.el :results silent
   (defun evil-emacs-lisp-set-follow-key ()
-    (keymap-set (evil-get-auxiliary-keymap emacs-lisp-mode-map 'normal t) "," (local-leader-map-init))
+    (dolist (m (list emacs-lisp-mode-map lisp-interaction-mode-map))
+      (keymap-set (evil-get-auxiliary-keymap m 'normal t) "," (local-leader-map-init)))
     (keymap-set-multi my-local-leader-map
+		      "d"  '("debug" . (keymap))
+		      "dw" 'ldbg-ldbg-wrap
+		      "du" 'ldbg-ldbg-unwrap
+
+		      "e"  '("eval" . (keymap))
 		      "eb" 'eval-buffer
 		      "ef" 'eval-defun
+
 		      "w" 'sp-wrap-round
 		      "u" 'sp-unwrap-sexp))
 
-  (add-hook 'emacs-lisp-mode-hook #'evil-emacs-lisp-set-follow-key)
+  (dolist (m '(emacs-lisp-mode-hook lisp-interaction-mode-hook))
+    (add-hook m #'evil-emacs-lisp-set-follow-key))
 #+end_src
 
 *** smartparens
 #+begin_src emacs-lisp :tangle init.el :results silent
-  (require 'smartparens)
+  (use 'smartparens)
+  (smartparens-global-mode)
   (keymap-set-multi my-leader-map
     "lw" 'sp-wrap-round)
 #+end_src
@@ -502,6 +513,9 @@ we simply use =auto-insert-mode=
   (use 'magit)
   (with-eval-after-load 'magit
     (define-key magit-mode-map (kbd "SPC") nil t))
+  (with-eval-after-load 'magit-diff
+    (define-key magit-diff-mode-map (kbd "SPC") nil t))
+
 
     ;; (with-eval-after-load 'magit-section (evil-collection-magit-section-setup))
     ;; (with-eval-after-load 'magit
@@ -520,6 +534,19 @@ we simply use =auto-insert-mode=
     "sr" 'rg)
 #+end_src
 
+** python
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (defun my-python-mode-hook ()
+    (setq fill-column 80))
+
+  (add-hook 'python-mode-hook #'my-python-mode-hook)
+  (setq python-shell-interpreter "ipython")
+  (setq python-shell-interpreter-args "--simple-prompt")
+
+
+  (with-eval-after-load 'org
+    (require 'ob-python))
+#+end_src
 * User config
 ** org-journal
 #+begin_src emacs-lisp :tangle init.el :results silent
@@ -533,7 +560,10 @@ we simply use =auto-insert-mode=
   ;; (use 'doc-scroll-pymupdf)
   ;; (use 'doc-pymupdf-epc)
   ;; (require 'doc-backend)
-  (load-file "/home/dalanicolai/git/doc-tools/doc-backend.el")
+  ;; (load-file "/home/dalanicolai/git/doc-tools/doc-backend.el")
+  (use 'epc)
+  (add-to-list 'load-path "/home/dalanicolai/git/emacs-doc-tools/")
+  (load-file "/home/dalanicolai/git/emacs-doc-tools/doc-tools-autoloads.el")
   (evil-define-key 'motion doc-scroll-mode-map "j" #'doc-scroll-forward)
   (evil-define-key 'motion doc-scroll-mode-map "k" #'doc-scroll-backward)
   (evil-define-key 'motion doc-scroll-mode-map "J" #'doc-scroll-next-page)
@@ -542,7 +572,8 @@ we simply use =auto-insert-mode=
 
 ** COMMENT doc-tools
 #+begin_src emacs-lisp :tangle init.el :results silent
-  (load-file "/home/dalanicolai/git/doc-tools/doc-backend-pymupdf.el")
+  ;; (load-file "/home/dalanicolai/git/doc-tools/doc-backend-pymupdf.el")
+  (use 'doc-tools)
 #+end_src
 ** ladebug
 #+begin_src emacs-lisp :tangle init.el :results silent
@@ -609,6 +640,7 @@ we simply use =auto-insert-mode=
 #+begin_src emacs-lisp :tangle init.el :results silent
   (use 'hl-todo)
   (global-hl-todo-mode)
+  (setq hl-todo-exclude-modes nil)
 #+end_src
 
 ** Info
@@ -616,4 +648,43 @@ we simply use =auto-insert-mode=
   (evil-define-key 'motion Info-mode-map
     "n" 'Info-search-next
     "p" 'Info-search-backward)
+#+end_src
+
+** fasd
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'fasd)
+
+  (keymap-set-multi my-leader-map
+		    "fa" '("fasd" . (keymap))
+		    "fas" 'fasd-find-file)
+#+end_src
+
+** Makefile
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (add-hook 'makefile-mode-hook (lambda () (setq tab-width 2)))
+#+end_src
+
+** org-jupyter
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (use 'jupyter)
+#+end_src
+
+** org-cv
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (add-to-list 'load-path "~/git/org-cv")
+  (require 'ox-moderncv)
+#+end_src
+** counsel-make command
+#+begin_src emacs-lisp :tangle init.el :results silent
+  (defun counsel-make ()
+    (interactive)
+    (let (targets)
+      (with-temp-buffer
+	(insert-file-contents-literally "Makefile")
+	(goto-char (point-min))
+	(while (search-forward-regexp "^\\([^ \n]*\\): " nil t)
+	  (push (match-string-no-properties 1) targets)))
+
+      (compile (format "make -k %s"
+		       (ivy-read "Target: " (nreverse targets))))))
 #+end_src
